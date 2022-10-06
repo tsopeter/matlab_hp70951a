@@ -1,3 +1,16 @@
+/**
+ * @file qvisa_implt.cpp
+ * @author Peter Tso (tsopeter@ku.edu)
+ * @brief Read visa code for use in MATLAB 2022A
+ *        Adapted from: https://github.com/Terrabits/c-visa-example
+ *        User:  https://github.com/Terrabits
+ * 
+ * @version 0.1
+ * @date 2022-10-06
+ *
+ * 
+ */
+
 #include "mex.hpp"
 #include "mexAdapter.hpp"
 
@@ -218,6 +231,15 @@ class MexFunction : public matlab::mex::Function  {
             return buffer;
         }
 
+        /**
+         * @brief Casts integers into hexadecimals
+         *        Referrenced from: https://stackoverflow.com/questions/5100718/integer-to-hex-string-in-c
+         *        User: https://stackoverflow.com/users/233522/kornel-kisielewicz
+         * 
+         * 
+         * @param i Integer
+         * @return std::string 
+         */
         std::string int_to_hex (int i) {
             std::stringstream stream;
             stream << "0x" << std::setfill ('0') << std::setw(sizeof(int)*2) << std::hex << i;
