@@ -268,18 +268,17 @@ class MexFunction : public matlab::mex::Function  {
             size_t i = 0, last_addr;
             BASE_TYPE value;
             while (i < count) {
-                // When the data encountered is a comma, read from sbuffer
+                
                 if (buffer[i] == ',') {
                     value = std::stod(sbuffer.c_str(), &last_addr);
                     data.push_back(value);
-                    sbuffer.clear();    // clear the sbuffer
+                    sbuffer.clear();
                 }
                 else {
-                    sbuffer += buffer[i];   // Else append to sbuffer
+                    sbuffer += buffer[i];
                 }
-                ++i;    // iterate through data
+                ++i;
             }
-            // edge case when the sbuffer is not empty
             if (sbuffer.length() > 0) {
                 value = std::stod(sbuffer.c_str(), &last_addr);
                 data.push_back(value);
