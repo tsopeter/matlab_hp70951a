@@ -159,6 +159,7 @@ class MexFunction : public matlab::mex::Function  {
                 COMP(buffer, comp, BUFSIZE);
                 std::cout<<gpib_addr_str<<": ";
                 PRINT_BUFFER_UNTIL(buffer, BUFSIZE, -1, true, 10, true);
+                return;
             }
 
             if (!std::isalpha(buffer[0])) {
@@ -168,6 +169,11 @@ class MexFunction : public matlab::mex::Function  {
                 output[0]  = std::move(value);
             }
             else {
+                std::cout<<"Data acquisition length (in bytes): "<<io_bytes<<'\n';
+                std::cout<<"Status byte = "<<status<<'\n';
+                COMP(buffer, comp, BUFSIZE);
+                std::cout<<gpib_addr_str<<": ";
+                PRINT_BUFFER_UNTIL(buffer, BUFSIZE, -1, true, 10, true);
                 auto value = factory.createScalar<BASE_TYPE>(0.0f);
                 output[0]  = std::move(value);
             }
