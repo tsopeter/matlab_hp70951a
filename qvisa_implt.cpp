@@ -153,11 +153,13 @@ class MexFunction : public matlab::mex::Function  {
             }
 
             // print out buffer
-            std::cout<<"Data acquisition length (in bytes): "<<io_bytes<<'\n';
-            std::cout<<"Status byte = "<<status<<'\n';
-            COMP(buffer, comp, BUFSIZE);
-            std::cout<<gpib_addr_str<<": ";
-            PRINT_BUFFER_UNTIL(buffer, BUFSIZE, -1, true, 10, true);
+            if (status < VI_SUCCESS) {
+                std::cout<<"Data acquisition length (in bytes): "<<io_bytes<<'\n';
+                std::cout<<"Status byte = "<<status<<'\n';
+                COMP(buffer, comp, BUFSIZE);
+                std::cout<<gpib_addr_str<<": ";
+                PRINT_BUFFER_UNTIL(buffer, BUFSIZE, -1, true, 10, true);
+            }
 
             if (!std::isalpha(buffer[0])) {
                 size_t last_addr;
@@ -218,6 +220,4 @@ class MexFunction : public matlab::mex::Function  {
 
         std::shared_ptr<matlab::engine::MATLABEngine> matlabPtr = getEngine();
         matlab::data::ArrayFactory factory;
-
-        std::vector<BASE_TYPE> data;    // Intermediate data where the output is stored.
 };

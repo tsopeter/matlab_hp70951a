@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 #include <array>
+#include <stdexcept>
 
 /**
  *  Modify the path to the visa.h library.
@@ -68,6 +69,8 @@
 class MexFunction : public matlab::mex::Function  {
     public:
         void operator()(matlab::mex::ArgumentList output, matlab::mex::ArgumentList input) {
+            data.clear();
+
             // check to see if arguments are valid
             check_arguments(output, input);
 
@@ -126,7 +129,7 @@ class MexFunction : public matlab::mex::Function  {
 
             // if it is the custom read command, utilize a special read function
             if (cmd_str == custom_cmd_r) {
-                read_from (instrument, buffer, BUFSIZE, io_bytes);
+                status = read_from (resource_manager, instrument, buffer, BUFSIZE, io_bytes);
             }
             else {
                 // Write command to instrument
@@ -161,11 +164,13 @@ class MexFunction : public matlab::mex::Function  {
             }
 
             // print out buffer
-            std::cout<<"Data acquisition length (in bytes): "<<io_bytes<<'\n';
-            std::cout<<"Status byte = "<<status<<'\n';
-            COMP(buffer, comp, BUFSIZE);
-            std::cout<<gpib_addr_str<<": ";
-            PRINT_BUFFER_UNTIL(buffer, BUFSIZE, -1, true, 10, true);
+            if (status < VI_SUCCESS) {
+                std::cout<<"Data acquisition length (in bytes): "<<io_bytes<<'\n';
+                std::cout<<"Status byte = "<<status<<'\n';
+                COMP(buffer, comp, BUFSIZE);
+                std::cout<<gpib_addr_str<<": ";
+                PRINT_BUFFER_UNTIL(buffer, BUFSIZE, -1, true, 10, true);
+            }
 
             // prepare data into typed array and return to user in 'matlab' space
             matlab::data::TypedArray<BASE_TYPE> v = factory.createArray({1, data.size()}, data.begin(), data.end());
@@ -223,16 +228,11 @@ class MexFunction : public matlab::mex::Function  {
          *  @brief Define a custom read data option
          *
          */
-        void read_from(ViSession &instrument, char *buffer, const ViUInt32 &BUFSIZE, ViInt32 &io_bytes) {
+        ViStatus read_from(ViSession &rm, ViSession &instrument, char *buffer, const ViUInt32 &BUFSIZE, ViInt32 &io_bytes) {
             ViStatus status;
-            char init_cmd[]        = "IP;";         // "TRDEF TRA,800" Use this command instead for any length trace. Note default is 800
             char one_swp_cmd[]     = "SNGLS;TS;";   // When we sweep the trace is saved into trace_a
-            char tdf_p[]           = "TDF P;";      // Utilize the parameter units
+            char tdf_p[]           = "TDF P;";      // Utilize the parameter unit
 
-            size_t range           = 800;           // This is the predefined range
-
-            // We need to send the appropiate command to the OSA to obtain a trace
-            status = viWrite(instrument, (ViBuf)init_cmd   , (ViInt32)sizeof(init_cmd)   , (ViPUInt32)&io_bytes);
             status = viWrite(instrument, (ViBuf)one_swp_cmd, (ViInt32)sizeof(one_swp_cmd), (ViPUInt32)&io_bytes);
 
             // We now need to get the data from the OSA (stored in trace_a)
@@ -240,31 +240,49 @@ class MexFunction : public matlab::mex::Function  {
             status = viWrite(instrument, (ViBuf)tdf_p, (ViInt32)sizeof(tdf_p), (ViPUInt32)&io_bytes);
       
             // We define our payload
-            const std::string tr_cp_cmd_header = "TRA[", tr_cp_cmd_tail = "]?;";
-            std::string tr_cp_cmd_payload;
+            std::string q_cmd = "SPAN, TRA?;";
+            status = viWrite (instrument, (ViBuf)q_cmd.c_str(), (ViInt32)q_cmd.length(), (ViPUInt32)&io_bytes);
+            if (status < VI_SUCCESS) {
+                viStatusDesc (rm, status, buffer);
+                PRINT_BUFFER(buffer, BUFSIZE, false);
+                return status;
+            }
 
-            // This obviously needs a redoing of the structure
-            // A more comprehensive look into how HP BASIC works needs to be done
-            // But as a proof-of-concept, it actaully works. It technically functions albeit slowly
             size_t last_addr;
-            for (size_t i = 1; i <= range; ++i) {
-                tr_cp_cmd_payload = tr_cp_cmd_header + std::to_string(i) + tr_cp_cmd_tail;
-                status = viWrite(instrument, (ViBuf)tr_cp_cmd_payload.c_str(), (ViInt32)tr_cp_cmd_payload.length(), (ViPUInt32)&io_bytes);
-                if (status < VI_SUCCESS) {
-                    std::cout<<"Writing... Error occured. Exiting loop...\n";
-                    break;
+            size_t i = 0;
+            status = viRead(instrument, (ViPBuf)buffer, BUFSIZE, (ViPUInt32)&io_bytes);
+            if (status >= VI_SUCCESS) {
+                parser(buffer, io_bytes);
+            }
+            else {
+                std::cout<<"Before status, # bytes in buffer: "<<io_bytes<<'\n';;
+                PRINT_BUFFER_UNTIL(buffer, BUFSIZE, -1, true, io_bytes, true);
+                viStatusDesc(rm, status, buffer);
+                PRINT_BUFFER(buffer, BUFSIZE, false);
+                PRINT_ERR("Error reading from instrument with read_from()");
+            }
+            return status;
+        }
+
+        // Data is returned as comma-seperated list
+        void parser(const char *buffer, const ViInt32 count) {
+            std::string sbuffer;
+            size_t i = 0, last_addr;
+            BASE_TYPE value;
+            while (i < count) {
+                if (buffer[i] == ',') {
+                    value = std::stod(sbuffer.c_str(), &last_addr);
+                    data.push_back(value);
+                    sbuffer.clear();
                 }
                 else {
-                    status = viRead(instrument, (ViPBuf)buffer, BUFSIZE, (ViPUInt32)&io_bytes);
-                    if (status < VI_SUCCESS) {
-                        std::cout<<"Reading... Error occured. Exiting loop...\n";
-                        break;
-                    }
-                    else {
-                        BASE_TYPE value = std::stod(buffer, &last_addr);
-                        data.push_back(value);
-                    }
+                    sbuffer += buffer[i];
                 }
+                ++i;
+            }
+            if (sbuffer.length() > 0) {
+                value = std::stod(sbuffer.c_str(), &last_addr);
+                data.push_back(value);
             }
         }
 

@@ -1,9 +1,20 @@
-function [o_arg1] = read_visa(GPIB_IDN, CMD, TYPE)
+function [data, space] = read_visa(GPIB_IDN, CMD, TYPE)
 % If you want to get data from the visa device
 % use CMD = "--RDATA" for read_data
 
-lb = ask_visa(GPIB_IDN, '')
+span = ask_visa(GPIB_IDN, 'SPANWL?;');
+center = ask_visa(GPIB_IDN, 'CENTERWL?;');
 
-o_arg1 = rvisa_implt(GPIB_IDN, CMD, TYPE);
+% the center wavelength is half of the span
+% lower bound is center - span/2
+% upper bound is center + span/2
+lb = center - (span/2);
+ub = center + (span/2);
+
+data = rvisa_implt(GPIB_IDN, CMD, TYPE);
+
+len   = length(data);
+space = linspace(lb, ub, len);
+
 end
 
