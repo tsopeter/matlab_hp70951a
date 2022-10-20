@@ -193,6 +193,7 @@ class MexFunction : public matlab::mex::Function  {
 
             // No need to clean-up heap data due to RAII, but clean-up should be done here
             // if necessary
+            viClose (instrument);
         }
     private:
 
