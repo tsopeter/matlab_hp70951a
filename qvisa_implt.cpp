@@ -140,6 +140,7 @@ class MexFunction : public matlab::mex::Function  {
                 viStatusDesc(resource_manager, status, buffer);
                 PRINT_BUFFER(buffer, BUFSIZE, false);
                 PRINT_ERR("Error writing to instrument");
+                viClose (instrument);   // bug fix: RELEASE CONTROL
                 return;
             }
             else {
@@ -154,6 +155,7 @@ class MexFunction : public matlab::mex::Function  {
                         viStatusDesc(resource_manager, status, buffer);
                         PRINT_BUFFER(buffer, BUFSIZE, false);
                         PRINT_ERR("Error reading from instrument");
+                        viClose (instrument);   // bug fix: RELEASE CONTROL
                         return;
                     }
         
@@ -172,6 +174,7 @@ class MexFunction : public matlab::mex::Function  {
                 COMP(buffer, comp, BUFSIZE);
                 std::cout<<gpib_addr_str<<": ";
                 PRINT_BUFFER_UNTIL(buffer, BUFSIZE, -1, true, 10, true);
+                viClose (instrument);   // bug fix: RELEASE CONTROL
                 return;
             }
 

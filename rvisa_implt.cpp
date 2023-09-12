@@ -42,6 +42,7 @@
     matlabPtr->feval(u"error", 0, std::vector<matlab::data::Array>({factory.createScalar(str)}));\
 }
 
+
 // Internal implementation of PRINT_BUFFER, it prints with speicifed length, casting, amount, and seperators
 #define PRINT_BUFFER_UNTIL(str, len, u, cast, amt, sep){\
     size_t pbu___counter = 0;\
@@ -151,6 +152,7 @@ class MexFunction : public matlab::mex::Function  {
                     viStatusDesc(resource_manager, status, buffer);
                     PRINT_BUFFER(buffer, BUFSIZE, false);
                     PRINT_ERR("Error writing to instrument");
+                    viClose (instrument);   // bug fix: RELEASE CONTROL
                     return;
                 }
                 else {
@@ -165,6 +167,7 @@ class MexFunction : public matlab::mex::Function  {
                     viStatusDesc(resource_manager, status, buffer);
                     PRINT_BUFFER(buffer, BUFSIZE, false);
                     PRINT_ERR("Error reading from instrument");
+                    viClose (instrument);   // bug fix: RELEASE CONTROL
                     return;
                 }
     
